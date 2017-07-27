@@ -14,6 +14,8 @@ import numpy
 from numpy import array, zeros, flipud, where, sqrt
 import fitsio
 
+from . import files
+
 NOMINAL_EXPTIME=900.0
 
 NONLINEAR=.12
@@ -38,11 +40,11 @@ def make_image(campaign, tilename, rebin=None, clean=True, type='jpg'):
     else:
         types=[type]
 
-    files=Files(campaign, tilename, rebin=rebin)
-    files.sync()
+    ifiles=Files(campaign, tilename, rebin=rebin)
+    ifiles.sync()
 
     image_maker=RGBImageMaker(
-        files,
+        ifiles,
         rebin=rebin,
     )
 
@@ -52,25 +54,25 @@ def make_image(campaign, tilename, rebin=None, clean=True, type='jpg'):
         image_maker.write_image(type)
 
     if clean:
-        files.clean()
+        ifiles.clean()
 
 class RGBImageMaker(object):
     """
     class to actually make the color image and write it
     """
     def __init__(self,
-                 files,
+                 ifiles,
                  rebin=None):
 
-        self.files=files
+        self.ifiles=ifiles
         self.rebin=rebin
 
         self.satval=1.0e9
 
     def _make_imlist(self):
         imlist=[]
-        files=self.files
-        for fname in [files['gfile'], files['rfile'], files['ifile']]:
+        ifiles=self.ifiles
+        for fname in [ifiles['gfile'], ifiles['rfile'], ifiles['ifile']]:
             print(fname)
             im = ImageTrans(fname)
             imlist.append(im)
@@ -83,30 +85,15 @@ class RGBImageMaker(object):
             if self.rebin is not None:
                 im.rebin(rebin)
 
-            """
-            minval=0.001
-            if i==0:
-                bad_logic = im.weight < minval
-            else:
-                bad_logic = bad_logic | (im.weight < minval)
-            """
             print()
 
-        """
-        wbad=numpy.where(bad_logic)
-        if wbad[0].size != 0:
-            print("zeroing",wbad[0].size,"pixels")
-            for im in imlist:
-
-                image=im.image
-                print("max in bad:",image[wbad].max())
-                image[wbad]=0.0
-                print("max in bad after:",image[wbad].max())
-        """
 
         self.imlist=imlist
 
     def make_image(self):
+        """
+        create the rgb image
+        """
         import images
 
         self._make_imlist()
@@ -129,53 +116,47 @@ class RGBImageMaker(object):
         self.colorim=colorim
 
     def write_image(self, image_type):
+        """
+        write the image to an output file
+        """
         from PIL import Image
 
         kw={}
 
         pim=Image.fromarray(self.colorim)
 
-        outfile=self.files['output_front'] + '.' + image_type
+        outfile=self.ifiles.get_output_file(image_type)
 
         if image_type == 'jpg':
             kw['quality'] = 90
-        elif image_type == 'tiff':
-            kw['compression'] = 'jpeg'
 
         print('writing:',outfile)
         pim.save(outfile, **kw)
 
     def _get_scales(self):
-        # this will be i,r,g -> r,g,b
-        campaign=self.files['campaign'].upper()
+        """
+        this will be i,r,g -> r,g,b
+        """
+
+        campaign=self.ifiles['campaign'].upper()
         print('getting scaled color for',campaign)
+
+        # smaller scale means darker, so noise is more suppressed
+        # compared to the peak. remember it is all scaled below
+        # one, so we are also cutting off some point in the image
+
+
         if campaign=='Y3A1_COADD':
-            # smaller scale means darker, so noise is more suppressed
-            # compared to the peak. remember it is all scaled below
-            # one, so we are also cutting off some point in the image
-
-            # same as Y1
-            #SCALE=.010*sqrt(2.0)
-            #relative_scales= array([1.00, 1.2, 2.0])
-
-            #SCALE=.020*sqrt(2.0)
             SCALE=.015*sqrt(2.0)
             relative_scales= array([1.00, 1.2, 2.0])
         elif campaign=='Y1A1':
             print('getting scaled color for y1')
-            # smaller scale means darker, so noise is more suppressed
-            # compared to the peak. remember it is all scaled below
-            # one, so we are also cutting off some point in the image
-            #SCALE=.010
-            #SCALE=.010*sqrt(2.0)
             SCALE=.010*sqrt(2.0)
             relative_scales= array([1.00, 1.2, 2.0])
         elif campaign=='SVA1':
-            # SVA seems to want a different scaling
+            # SVA seems to require a very different scaling
             print('getting scaled color for sv')
-            #SCALE=.050*0.666
             SCALE=.050*0.88
-            #relative_scales= array([1.1, 1.1, 2.0])
             relative_scales= array([1.00, 1.2, 2.5])
         else:
             raise ValueError("bad campaign: '%s'" % campaign)
@@ -266,10 +247,40 @@ def make_dir(fname):
         os.makedirs(dname)
 
 
+class FlistCache(dict):
+    _flists={}
+
+    def get_flist(self, campaign):
+        """
+        get the coadd file list
+        """
+        if campaign not in FlistCache._flists:
+            flist_file=files.get_flist_file(campaign)
+            print("reading:",flist_file)
+            data=fitsio.read(flist_file)
+
+            flist={}
+            for i in xrange(data.size):
+                key=_convert_bytes(data['key'][i].strip())
+                path=_convert_bytes(data['path'][i].strip())
+                flist[key] = path
+
+            FlistCache._flists[campaign] = flist
+
+        return FlistCache._flists[campaign]
+
+def get_flist(campaign):
+    """
+    get the file list for this campaign
+    """
+    cache=FlistCache()
+    return cache.get_flist(campaign)
+
 class Files(dict):
     """
     deal with files, including syncing
     """
+
     def __init__(self, campaign, tilename, rebin=None, clean=True):
         self['campaign'] = campaign.upper()
         self['tilename'] = tilename
@@ -313,52 +324,37 @@ class Files(dict):
         """
         get the coadd file list
         """
-        if not hasattr(self, '_flist'):
-            flist_file=self.get_flist_file()
-            print("reading:",flist_file)
-            data=fitsio.read(flist_file)
-
-            flist={}
-            for i in xrange(data.size):
-                key=_convert_bytes(data['key'][i].strip())
-                path=_convert_bytes(data['path'][i].strip())
-                flist[key] = path
-
-            self._flist = flist
-
-        return self._flist
-
-    def get_list_dir(self):
-        """
-        we keep lists here
-        """
-        return os.path.expandvars('$DESDATA/jpg/lists')
-
-    def get_flist_file(self):
-        """
-        holds paths to coadds
-        """
-        dir=self.get_list_dir()
-        fname='coadd-flist-%(campaign)s.fits' % self
-        return os.path.join(dir, fname)
-
+        return get_flist(self['campaign'])
 
     def get_temp_dir(self):
         """
         temporary location for the input fits files
         """
-        return os.path.join(
-            self.get_output_dir(),
-            'sources',
+        return files.get_temp_dir(
+            self['campaign'],
+            self['tilename'],
         )
 
     def get_output_dir(self):
         """
         location for the image and temp files
         """
-        d='$DESDATA/jpg/%(campaign)s/%(tilename)s' % self
-        d=os.path.expandvars(d)
-        return d
+        return files.get_output_dir(
+            self['campaign'],
+            self['tilename'],
+        )
+
+    def get_output_file(self, image_type):
+        """
+        location for the image and temp files
+        """
+        return files.get_output_file(
+            self['campaign'],
+            self['tilename'],
+            rebin=self._rebin,
+            ext=image_type,
+        )
+
 
     def sync(self):
         """
@@ -405,9 +401,6 @@ class Files(dict):
         return os.path.join(odir, front)
 
     def _set_files(self):
-        odir=self.get_output_dir()
-
-        self['output_front'] = self.get_output_front()
 
         for band in self._bands:
             self['%sfile' % band] = self.get_coadd_file(band)

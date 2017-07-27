@@ -1,7 +1,10 @@
 import os
 from distutils.core import setup
 
-scripts=['des-make-image']
+scripts=[
+    'des-make-image',
+    'des-make-image-batch',
+]
 scripts=[os.path.join('bin',s) for s in scripts]
 
 setup(
