@@ -1,0 +1,34 @@
+#!/usr/bin/env python
+
+import argparse
+import desimage
+
+parser=argparse.ArgumentParser()
+
+parser.add_argument('campaign',
+                    help='e.g. y3a1_coadd')
+parser.add_argument('tilename',
+                    help='e.g. DES0428-4748')
+parser.add_argument('--types',
+                    default='jpg',
+                    help="types to make, e.g. jpg,tiff.  Default jpg")
+parser.add_argument('--noclean',
+                    action='store_true',
+                    help="don't clean up the downloaded fits files")
+
+if __name__=="__main__":
+    args=parser.parse_args()
+
+    types = args.types.split(',')
+
+    if args.noclean:
+        clean=False
+    else:
+        clean=True
+
+    desimage.make_image(
+        args.campaign,
+        args.tilename,
+        clean=clean,
+        type=types,
+    )
