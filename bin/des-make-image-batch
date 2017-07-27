@@ -1,0 +1,32 @@
+#!/usr/bin/env python
+
+import argparse
+import desimage
+
+parser=argparse.ArgumentParser()
+
+parser.add_argument('campaign',
+                    help='e.g. y3a1_coadd')
+parser.add_argument('--types',
+                    default='jpg',
+                    help="types to make, e.g. jpg,tiff.  Default jpg")
+parser.add_argument('--missing',
+                    action='store_true',
+                    help="only write for missing")
+parser.add_argument('--system',
+                    default='wq',
+                    help="batch system")
+
+
+if __name__=="__main__":
+    args=parser.parse_args()
+
+    types = args.types.split(',')
+
+    maker=desimage.batch.ScriptMaker(
+        args.system,
+        args.campaign,
+        types,
+        missing=args.missing,
+    )
+    maker.go()
