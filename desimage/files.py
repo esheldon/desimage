@@ -97,7 +97,7 @@ def get_wq_file(campaign, tilename, missing=False):
     dir=get_script_dir(campaign)
     parts=[tilename]
     if missing:
-        parts += ['-missing']
+        parts += ['missing']
 
     fname='-'.join(parts)
     fname='%s.yaml' % fname
