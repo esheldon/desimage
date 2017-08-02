@@ -53,9 +53,57 @@ class ScriptMaker(object):
         """
         if self._system=='wq':
             self._write_wq(tilename)
+        elif self._system=='lsf':
+            self._write_lsf(tilename)
         else:
             raise ValueError("Unsupported system: '%s'" % self._system)
 
+    def _write_lsf(self, tilename):
+        """
+        write the wq script
+        """
+        lsf_file=files.get_lsf_file(
+            self._campaign,
+            tilename,
+            missing=self._missing,
+        )
+        oefile=os.path.basename(lsf_file).replace('.lsf','.oe')
+        script_file=files.get_script_file(
+            self._campaign,
+            tilename,
+        )
+        log_file=files.get_log_file(
+            self._campaign,
+            tilename,
+        )
+        job_name='%s-rgb' % tilename
+
+        text="""#!/bin/bash
+#BSUB -J "%(job_name)s"
+#BSUB -oo ./%(oefile)s
+#BSUB -n 2
+#BSUB -R span[hosts=1]
+#BSUB -R "linux64 && rhel60 && (!deft)"
+#BSUB -W 25
+
+bash %(script_file)s \n"""
+
+        text = text % dict(
+            script_file=script_file,
+            job_name=job_name,
+            oefile=oefile,
+        )
+
+        if self._missing:
+            subfile=lsf_file+'.submitted'
+            if os.path.exists(subfile):
+                os.remove(subfile)
+
+        print("writing:",lsf_file)
+        with open(lsf_file,'w') as fobj:
+            fobj.write(text)
+
+ 
     def _write_wq(self, tilename):
         """
         write the wq script
@@ -73,7 +121,7 @@ class ScriptMaker(object):
             self._campaign,
             tilename,
         )
-        job_name='%s' % tilename
+        job_name='%s-rgb' % tilename
 
         text="""
 command: |

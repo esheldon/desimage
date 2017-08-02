@@ -5,6 +5,7 @@ import desimage
 
 parser=argparse.ArgumentParser()
 
+parser.add_argument('system', help="batch system")
 parser.add_argument('campaign',
                     help='e.g. y3a1_coadd')
 parser.add_argument('--types',
@@ -13,10 +14,6 @@ parser.add_argument('--types',
 parser.add_argument('--missing',
                     action='store_true',
                     help="only write for missing")
-parser.add_argument('--system',
-                    default='wq',
-                    help="batch system")
-
 
 if __name__=="__main__":
     args=parser.parse_args()

@@ -43,18 +43,19 @@ def make_image(campaign, tilename, rebin=None, clean=True, type='jpg'):
     ifiles=Files(campaign, tilename, rebin=rebin)
     ifiles.sync()
 
-    image_maker=RGBImageMaker(
-        ifiles,
-        rebin=rebin,
-    )
+    try:
+        image_maker=RGBImageMaker(
+            ifiles,
+            rebin=rebin,
+        )
 
-    image_maker.make_image()
+        image_maker.make_image()
 
-    for type in types:
-        image_maker.write_image(type)
-
-    if clean:
-        ifiles.clean()
+        for type in types:
+            image_maker.write_image(type)
+    finally:
+        if clean:
+            ifiles.clean()
 
 class RGBImageMaker(object):
     """

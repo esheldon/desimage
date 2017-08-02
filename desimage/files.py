@@ -102,3 +102,16 @@ def get_wq_file(campaign, tilename, missing=False):
     fname='-'.join(parts)
     fname='%s.yaml' % fname
     return os.path.join(dir, fname)
+
+def get_lsf_file(campaign, tilename, missing=False):
+    """
+    location for scripts
+    """
+    dir=get_script_dir(campaign)
+    parts=[tilename]
+    if missing:
+        parts += ['missing']
+
+    fname='-'.join(parts)
+    fname='%s.lsf' % fname
+    return os.path.join(dir, fname)
