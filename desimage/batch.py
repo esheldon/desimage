@@ -6,10 +6,9 @@ from . import imagemaker
 from . import files
 
 class ScriptMaker(object):
-    def __init__(self, system, campaign, types, missing=False):
+    def __init__(self, system, campaign, types):
         self._system=system
         self._campaign=campaign
-        self._missing=missing
         self._types=types
 
     def go(self):
@@ -30,22 +29,22 @@ class ScriptMaker(object):
             
         for tilename in tilenames:
 
-            if self._missing:
-                dowrite=False
-                for type in self._types:
-                    image_file=files.get_output_file(
-                        self._campaign,
-                        tilename,
-                        ext=type,
-                    )
-                    if not os.path.exists(image_file):
-                        doprint=True
-                        break
-            else:
-                doprint=True
+            doprint=False
+            for type in self._types:
+                image_file=files.get_output_file(
+                    self._campaign,
+                    tilename,
+                    ext=type,
+                )
+                if not os.path.exists(image_file):
+                    doprint=True
+                    break
 
-            self._write_script(tilename)
-            self._write_batch(tilename)
+            if doprint:
+                self._write_script(tilename)
+                self._write_batch(tilename)
+            else:
+                self._clear_batch(tilename)
 
     def _write_batch(self, tilename):
         """
@@ -58,6 +57,31 @@ class ScriptMaker(object):
         else:
             raise ValueError("Unsupported system: '%s'" % self._system)
 
+    def _clear_batch(self, tilename):
+        """
+        write the appropriate batch file
+        """
+        if self._system=='wq':
+            self._clear_wq(tilename)
+        elif self._system=='lsf':
+            self._clear_lsf(tilename)
+        else:
+            raise ValueError("Unsupported system: '%s'" % self._system)
+
+
+    def _clear_wq(self, tilename):
+        wq_file=files.get_wq_file(
+            self._campaign,
+            tilename,
+        )
+        wq_log=wq_file+'.wqlog'
+
+        flist=[wq_file, wq_log]
+        for f in flist:
+            if os.path.exists(f):
+                os.remove(f)
+
+
     def _write_lsf(self, tilename):
         """
         write the wq script
@@ -65,7 +89,6 @@ class ScriptMaker(object):
         lsf_file=files.get_lsf_file(
             self._campaign,
             tilename,
-            missing=self._missing,
         )
         oefile=os.path.basename(lsf_file).replace('.lsf','.oe')
         script_file=files.get_script_file(
@@ -94,11 +117,6 @@ bash %(script_file)s \n"""
             oefile=oefile,
         )
 
-        if self._missing:
-            subfile=lsf_file+'.submitted'
-            if os.path.exists(subfile):
-                os.remove(subfile)
-
         print("writing:",lsf_file)
         with open(lsf_file,'w') as fobj:
             fobj.write(text)
@@ -111,8 +129,9 @@ bash %(script_file)s \n"""
         wq_file=files.get_wq_file(
             self._campaign,
             tilename,
-            missing=self._missing,
         )
+        wqlog=wq_file+'.wqlog'
+
         script_file=files.get_script_file(
             self._campaign,
             tilename,
@@ -151,10 +170,8 @@ job_name: "%(job_name)s"
             job_name=job_name,
         )
 
-        if self._missing:
-            wqlog=wq_file+'.wqlog'
-            if os.path.exists(wqlog):
-                os.remove(wqlog)
+        if os.path.exists(wqlog):
+            os.remove(wqlog)
 
         print("writing:",wq_file)
         with open(wq_file,'w') as fobj:

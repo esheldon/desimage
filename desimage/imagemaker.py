@@ -149,6 +149,7 @@ class RGBImageMaker(object):
 
         if campaign=='Y3A1_COADD':
             SCALE=.015*sqrt(2.0)
+            #SCALE=.010*sqrt(2.0)
             relative_scales= array([1.00, 1.2, 2.0])
         elif campaign=='Y1A1':
             print('getting scaled color for y1')

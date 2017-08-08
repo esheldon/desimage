@@ -11,9 +11,6 @@ parser.add_argument('campaign',
 parser.add_argument('--types',
                     default='jpg',
                     help="types to make, e.g. jpg,tiff.  Default jpg")
-parser.add_argument('--missing',
-                    action='store_true',
-                    help="only write for missing")
 
 if __name__=="__main__":
     args=parser.parse_args()
@@ -24,6 +21,5 @@ if __name__=="__main__":
         args.system,
         args.campaign,
         types,
-        missing=args.missing,
     )
     maker.go()
