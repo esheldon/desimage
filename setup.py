@@ -3,6 +3,7 @@ from distutils.core import setup
 
 scripts=[
     'des-make-image',
+    'des-make-image-fromfiles',
     'des-make-image-batch',
 ]
 scripts=[os.path.join('bin',s) for s in scripts]

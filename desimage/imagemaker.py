@@ -21,7 +21,11 @@ NOMINAL_EXPTIME=900.0
 NONLINEAR=.12
 DEFAULT_CAMPAIGN='y3a1_coadd'
 
-def make_image(campaign, tilename, rebin=None, clean=True, type='jpg'):
+def make_image_auto(campaign,
+                    tilename,
+                    rebin=None,
+                    clean=True,
+                    type='jpg'):
     """
     make a color jpeg for the specified run
 
@@ -40,7 +44,7 @@ def make_image(campaign, tilename, rebin=None, clean=True, type='jpg'):
     else:
         types=[type]
 
-    ifiles=Files(campaign, tilename, rebin=rebin)
+    ifiles=FilesAuto(campaign, tilename, rebin=rebin)
     ifiles.sync()
 
     try:
@@ -52,10 +56,56 @@ def make_image(campaign, tilename, rebin=None, clean=True, type='jpg'):
         image_maker.make_image()
 
         for type in types:
-            image_maker.write_image(type)
+            image_maker.write_image(image_type=type)
     finally:
         if clean:
             ifiles.clean()
+
+def make_image_fromfiles(fname,
+                         gfile,
+                         rfile,
+                         ifile,
+                         campaign=DEFAULT_CAMPAIGN,
+                         tilename='None',
+                         image_ext=1):
+    """
+    make a color jpeg for the specified run
+
+    parameters
+    ----------
+    fname: string
+        output image file name
+    gfile: string
+        file name for g band
+    rfile: string
+        file name for r band
+    ifile: string
+        file name for i band
+    campaign: string, optional
+        campaign, e.g. y3a1_coadd
+    tilename: string, optional
+        DES coadd run
+    """
+
+    if isinstance(type,list):
+        types=type
+    else:
+        types=[type]
+
+    ifiles=Files(
+        gfile,
+        rfile,
+        ifile,
+        campaign=campaign,
+        tilename=tilename,
+    )
+
+    image_maker=RGBImageMaker(ifiles, image_ext=image_ext)
+
+    image_maker.make_image()
+
+    image_maker.write_image(fname=fname)
+
 
 class RGBImageMaker(object):
     """
@@ -63,10 +113,12 @@ class RGBImageMaker(object):
     """
     def __init__(self,
                  ifiles,
+                 image_ext=1,
                  rebin=None):
 
         self.ifiles=ifiles
         self.rebin=rebin
+        self.image_ext=image_ext
 
         self.satval=1.0e9
 
@@ -75,7 +127,7 @@ class RGBImageMaker(object):
         ifiles=self.ifiles
         for fname in [ifiles['gfile'], ifiles['rfile'], ifiles['ifile']]:
             print(fname)
-            im = ImageTrans(fname)
+            im = ImageTrans(fname, image_ext=self.image_ext)
             imlist.append(im)
 
         for i,im in enumerate(imlist):
@@ -116,7 +168,7 @@ class RGBImageMaker(object):
 
         self.colorim=colorim
 
-    def write_image(self, image_type):
+    def write_image(self, image_type=None, fname=None):
         """
         write the image to an output file
         """
@@ -126,13 +178,18 @@ class RGBImageMaker(object):
 
         pim=Image.fromarray(self.colorim)
 
-        outfile=self.ifiles.get_output_file(image_type)
+        if fname is not None:
+            image_type=fname.split('.')[-1]
+        else:
+            assert image_type is not None,\
+                'send image_type if fname is not sent'
+            fname=self.ifiles.get_output_file(image_type)
 
         if image_type == 'jpg':
             kw['quality'] = 90
 
-        print('writing:',outfile)
-        pim.save(outfile, **kw)
+        print('writing:',fname)
+        pim.save(fname, **kw)
 
     def _get_scales(self):
         """
@@ -167,26 +224,31 @@ class RGBImageMaker(object):
 
         for i in xrange(3):
             im=self.imlist[i]
-            print("    scaling",im.band,im.exptime)
-            scales[i] *= sqrt(NOMINAL_EXPTIME/im.exptime)
+            if im.exptime is not None:
+                print("    scaling",im.band,im.exptime)
+                scales[i] *= sqrt(NOMINAL_EXPTIME/im.exptime)
         return scales
 
 
 
 class ImageTrans(object):
-    def __init__(self, filename):
+    def __init__(self, filename, image_ext=1):
         with fitsio.FITS(filename) as fits:
-            image=fits[1].read()
-            header=fits[1].read_header()
-            wt=fits[2].read()
+            image=fits[image_ext].read()
+            header=fits[image_ext].read_header()
+            #wt=fits[2].read()
 
         self.image=image
         self.header=header
-        self.weight=wt
+        #self.weight=wt
 
-        self.band=header['FILTER'].split()[0]
-        self.exptime=header['exptime']
-        self.satval=header['saturate']
+        #self.band=header['FILTER'].split()[0]
+        self.band=header.get('FILTER','None').split()[0]
+        #self.exptime=header['exptime']
+        self.exptime=header.get('exptime',NOMINAL_EXPTIME)
+
+        #self.satval=header['saturate']
+        #self.satval=header.get('saturate',1.e9)
 
     def zero_bad_weightmap(self, minval=0.001):
         print("    zeroing bad weight map")
@@ -280,18 +342,41 @@ def get_flist(campaign):
 
 class Files(dict):
     """
+    hold file information
+    """
+    def __init__(self,
+                 gfile,
+                 rfile,
+                 ifile,
+                 campaign=DEFAULT_CAMPAIGN,
+                 tilename='None'):
+
+        self['campaign'] = campaign.upper()
+        self['tilename'] = tilename
+        self['gfile'] = gfile
+        self['rfile'] = rfile
+        self['ifile'] = ifile
+
+class FilesAuto(Files):
+    """
     deal with files, including syncing
     """
 
     def __init__(self, campaign, tilename, rebin=None, clean=True):
-        self['campaign'] = campaign.upper()
-        self['tilename'] = tilename
         self._bands=['g','r','i']
 
         self._rebin=rebin
         self._clean=clean
 
-        self._set_files()
+        fd=self._get_files()
+
+        super(FilesAuto,self).__init__(
+            fd['gfile'],
+            fd['rfile'],
+            fd['ifile'],
+            campaign,
+            tilename=tilename,
+        )
 
 
     def get_remote_coadd_file(self, band):
@@ -402,11 +487,13 @@ class Files(dict):
             front='%s_rebin%02d' % (front,int(self._rebin))
         return os.path.join(odir, front)
 
-    def _set_files(self):
+    def _get_files(self):
 
+        d={}
         for band in self._bands:
-            self['%sfile' % band] = self.get_coadd_file(band)
-            self['%sfile_remote' % band] = self.get_remote_coadd_file(band)
+            d['%sfile' % band] = self.get_coadd_file(band)
+            d['%sfile_remote' % band] = self.get_remote_coadd_file(band)
+        return d
 
 def _convert_bytes(data):
     if is3:

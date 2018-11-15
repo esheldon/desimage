@@ -26,7 +26,7 @@ if __name__=="__main__":
     else:
         clean=True
 
-    desimage.make_image(
+    desimage.make_image_auto(
         args.campaign,
         args.tilename,
         clean=clean,
