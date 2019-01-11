@@ -25,6 +25,7 @@ def make_image_auto(campaign,
                     tilename,
                     rebin=None,
                     clean=True,
+                    ranges=None,
                     type='jpg'):
     """
     make a color jpeg for the specified run
@@ -51,6 +52,7 @@ def make_image_auto(campaign,
         image_maker=RGBImageMaker(
             ifiles,
             rebin=rebin,
+            ranges=ranges,
         )
 
         image_maker.make_image()
@@ -67,6 +69,8 @@ def make_image_fromfiles(fname,
                          ifile,
                          campaign=DEFAULT_CAMPAIGN,
                          tilename='None',
+                         ranges=None,
+                         boost=None,
                          image_ext=1):
     """
     make a color jpeg for the specified run
@@ -100,7 +104,12 @@ def make_image_fromfiles(fname,
         tilename=tilename,
     )
 
-    image_maker=RGBImageMaker(ifiles, image_ext=image_ext)
+    image_maker=RGBImageMaker(
+        ifiles,
+        image_ext=image_ext,
+        ranges=ranges,
+        boost=boost,
+    )
 
     image_maker.make_image()
 
@@ -114,11 +123,15 @@ class RGBImageMaker(object):
     def __init__(self,
                  ifiles,
                  image_ext=1,
+                 ranges=None,
+                 boost=None,
                  rebin=None):
 
         self.ifiles=ifiles
         self.rebin=rebin
+        self.boost=boost
         self.image_ext=image_ext
+        self.ranges=ranges
 
         self.satval=1.0e9
 
@@ -127,7 +140,12 @@ class RGBImageMaker(object):
         ifiles=self.ifiles
         for fname in [ifiles['gfile'], ifiles['rfile'], ifiles['ifile']]:
             print(fname)
-            im = ImageTrans(fname, image_ext=self.image_ext)
+            im = ImageTrans(
+                fname,
+                image_ext=self.image_ext,
+                ranges=self.ranges,
+                boost=self.boost,
+            )
             imlist.append(im)
 
         for i,im in enumerate(imlist):
@@ -204,21 +222,37 @@ class RGBImageMaker(object):
         # one, so we are also cutting off some point in the image
 
 
-        if campaign=='Y3A1_COADD':
-            SCALE=.015*sqrt(2.0)
-            #SCALE=.010*sqrt(2.0)
-            relative_scales= array([1.00, 1.2, 2.0])
-        elif campaign=='Y1A1':
-            print('getting scaled color for y1')
-            SCALE=.010*sqrt(2.0)
-            relative_scales= array([1.00, 1.2, 2.0])
-        elif campaign=='SVA1':
-            # SVA seems to require a very different scaling
-            print('getting scaled color for sv')
-            SCALE=.050*0.88
-            relative_scales= array([1.00, 1.2, 2.5])
+        if campaign=='ONEOFF':
+            nominal_exptime=90.0
+            # used for the big galaxy images
+            SCALE=0.01
+            relative_scales= array([1.0, 1.0, 1.5])
+            #SCALE=0.004
+            #SCALE=0.015
+            #relative_scales= array([1.00, 1.2, 2.0])
+            #relative_scales= array([1.0, 1.0, 1.6])
+        elif campaign=='MACS':
+            nominal_exptime=9000.0
+            #SCALE=.015*sqrt(2.0)
+            SCALE=0.015
+            relative_scales= array([1.0, 1.0, 1.5])
         else:
-            raise ValueError("bad campaign: '%s'" % campaign)
+            nominal_exptime=NOMINAL_EXPTIME
+            if campaign=='Y3A1_COADD':
+                SCALE=.015*sqrt(2.0)
+                #SCALE=.010*sqrt(2.0)
+                relative_scales= array([1.00, 1.2, 2.0])
+            elif campaign=='Y1A1':
+                print('getting scaled color for y1')
+                SCALE=.010*sqrt(2.0)
+                relative_scales= array([1.00, 1.2, 2.0])
+            elif campaign=='SVA1':
+                # SVA seems to require a very different scaling
+                print('getting scaled color for sv')
+                SCALE=.050*0.88
+                relative_scales= array([1.00, 1.2, 2.5])
+            else:
+                raise ValueError("bad campaign: '%s'" % campaign)
 
         scales= SCALE*relative_scales
 
@@ -226,17 +260,30 @@ class RGBImageMaker(object):
             im=self.imlist[i]
             if im.exptime is not None:
                 print("    scaling",im.band,im.exptime)
-                scales[i] *= sqrt(NOMINAL_EXPTIME/im.exptime)
+                scales[i] *= sqrt(nominal_exptime/im.exptime)
         return scales
 
 
 
 class ImageTrans(object):
-    def __init__(self, filename, image_ext=1):
+    def __init__(self, filename, boost=None, image_ext=1, ranges=None):
+        import images
+        self.ranges=ranges
         with fitsio.FITS(filename) as fits:
-            image=fits[image_ext].read()
+            if ranges is not None:
+                rowslice, colslice = ranges
+                print(rowslice)
+                print(colslice)
+                image=fits[image_ext][rowslice, colslice]
+
+            else:
+                image=fits[image_ext].read()
+
+            if boost is not None:
+                image = images.boost(image, boost)
+
+            #image=fits[image_ext][12850:14820, 14000:17700]
             header=fits[image_ext].read_header()
-            #wt=fits[2].read()
 
         self.image=image
         self.header=header

@@ -20,9 +20,24 @@ parser.add_argument('--image-ext',
                     type=int,
                     default=1)
 
+parser.add_argument('--ranges', help='e.g. ranges=1000:2000,550:850')
+
+parser.add_argument('--boost', type=int,help='boost image')
+
+
 
 if __name__=="__main__":
     args=parser.parse_args()
+
+    ranges=args.ranges
+    if ranges is not None:
+        rparts = ranges.split(',')
+        rowstart,rowend= [int(p) for p in rparts[0].split(':')]
+        colstart,colend= [int(p) for p in rparts[1].split(':')]
+        ranges = (
+            slice(rowstart, rowend),
+            slice(colstart, colend),
+        )
 
     desimage.make_image_fromfiles(
         args.output_file,
@@ -32,4 +47,6 @@ if __name__=="__main__":
         campaign=args.campaign,
         tilename=args.tilename,
         image_ext=args.image_ext,
+        ranges=ranges,
+        boost=args.boost,
     )
