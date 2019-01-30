@@ -71,6 +71,8 @@ def make_image_fromfiles(fname,
                          tilename='None',
                          ranges=None,
                          boost=None,
+                         scales=None,
+                         absscale=None,
                          image_ext=1):
     """
     make a color jpeg for the specified run
@@ -109,6 +111,8 @@ def make_image_fromfiles(fname,
         image_ext=image_ext,
         ranges=ranges,
         boost=boost,
+        scales=scales,
+        absscale=absscale,
     )
 
     image_maker.make_image()
@@ -123,6 +127,8 @@ class RGBImageMaker(object):
     def __init__(self,
                  ifiles,
                  image_ext=1,
+                 scales=None,
+                 absscale=None,
                  ranges=None,
                  boost=None,
                  rebin=None):
@@ -133,7 +139,11 @@ class RGBImageMaker(object):
         self.image_ext=image_ext
         self.ranges=ranges
 
+        self.scales=scales
+        self.absscale=absscale
+
         self.satval=1.0e9
+        #self.satval=50
 
     def _make_imlist(self):
         imlist=[]
@@ -174,6 +184,10 @@ class RGBImageMaker(object):
         print("using satval:",self.satval)
         print('getting color image')
         imlist=self.imlist
+        print('maxvals:')
+        for i,im in enumerate(imlist):
+            print(im.image.max()*scales[i])
+
         colorim=images.get_color_image(imlist[2].image,
                                        imlist[1].image,
                                        imlist[0].image,
@@ -221,8 +235,13 @@ class RGBImageMaker(object):
         # compared to the peak. remember it is all scaled below
         # one, so we are also cutting off some point in the image
 
+        
+        if self.scales is not None:
+            nominal_exptime=NOMINAL_EXPTIME
+            relative_scales= array(self.scales)
+            SCALE=self.absscale
 
-        if campaign=='ONEOFF':
+        elif campaign=='ONEOFF':
             nominal_exptime=90.0
             # used for the big galaxy images
             SCALE=0.01
@@ -238,7 +257,12 @@ class RGBImageMaker(object):
             relative_scales= array([1.0, 1.0, 1.5])
         else:
             nominal_exptime=NOMINAL_EXPTIME
-            if campaign=='Y3A1_COADD':
+            if campaign=='Y5A1_COADD':
+                #SCALE=.015*sqrt(2.0)
+                SCALE=.03
+                #relative_scales= array([1.00, 1.2, 2.0])
+                relative_scales= array([1.0, 1.0, 1.5])
+            elif campaign=='Y3A1_COADD':
                 SCALE=.015*sqrt(2.0)
                 #SCALE=.010*sqrt(2.0)
                 relative_scales= array([1.00, 1.2, 2.0])
@@ -255,6 +279,7 @@ class RGBImageMaker(object):
                 raise ValueError("bad campaign: '%s'" % campaign)
 
         scales= SCALE*relative_scales
+        print('scales:',scales)
 
         for i in xrange(3):
             im=self.imlist[i]

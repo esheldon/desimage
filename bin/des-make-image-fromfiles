@@ -11,8 +11,14 @@ parser.add_argument('rfile')
 parser.add_argument('ifile')
 
 parser.add_argument('--campaign',
-                    default='y3a1_coadd',
-                    help='e.g. y3a1_coadd')
+                    default='y5a1_coadd',
+                    help='e.g. y5a1_coadd')
+parser.add_argument('--scales',
+                    help='relative scales.  over-ride campaign settings.  e.g. 1.0,1.2,2.0 ')
+parser.add_argument('--absscale',
+                    type=float,
+                    default=0.03,
+                    help='absolute scaling when relative scales is set. default 0.03')
 parser.add_argument('--tilename',
                     default='None',
                     help='e.g. DES0428-4748')
@@ -39,6 +45,12 @@ if __name__=="__main__":
             slice(colstart, colend),
         )
 
+    if args.scales is not None:
+        scales=[float(s) for s in args.scales.split(',')]
+        assert len(scales)==3,'need a scale for each band'
+    else:
+        scales=None
+
     desimage.make_image_fromfiles(
         args.output_file,
         args.gfile,
@@ -47,6 +59,8 @@ if __name__=="__main__":
         campaign=args.campaign,
         tilename=args.tilename,
         image_ext=args.image_ext,
+        scales=scales,
+        absscale=args.absscale,
         ranges=ranges,
         boost=args.boost,
     )
