@@ -15,6 +15,7 @@ from numpy import array, zeros, flipud, where, sqrt
 import fitsio
 
 from . import files
+from . import images
 
 NOMINAL_EXPTIME=900.0
 
@@ -175,7 +176,6 @@ class RGBImageMaker(object):
         """
         create the rgb image
         """
-        import images
 
         self._make_imlist()
 
@@ -307,20 +307,13 @@ class ImageTrans(object):
             if boost is not None:
                 image = images.boost(image, boost)
 
-            #image=fits[image_ext][12850:14820, 14000:17700]
             header=fits[image_ext].read_header()
 
         self.image=image
         self.header=header
-        #self.weight=wt
 
-        #self.band=header['FILTER'].split()[0]
         self.band=header.get('FILTER','None').split()[0]
-        #self.exptime=header['exptime']
         self.exptime=header.get('exptime',NOMINAL_EXPTIME)
-
-        #self.satval=header['saturate']
-        #self.satval=header.get('saturate',1.e9)
 
     def zero_bad_weightmap(self, minval=0.001):
         print("    zeroing bad weight map")
@@ -369,9 +362,6 @@ class ImageTrans(object):
         print('    scaling',self.band, self.exptime,"to",exptime)
 
         self.image *= (exptime/self.exptime)
-        #self.image *= (exptime/self.exptime)
-
-
 
 def make_dir(fname):
     dname=os.path.dirname(fname)

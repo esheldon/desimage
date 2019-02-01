@@ -5,3 +5,5 @@ from .imagemaker import (
 )
 
 from . import batch
+from . import images
+from . import files
