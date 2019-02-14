@@ -11,7 +11,7 @@ import os
 import subprocess
 import shutil
 import numpy
-from numpy import array, zeros, flipud, where, sqrt
+from numpy import array, zeros, flipud, where, sqrt, isnan
 import fitsio
 
 from . import files
@@ -303,6 +303,9 @@ class ImageTrans(object):
 
             else:
                 image=fits[image_ext].read()
+            wnan=where(isnan(image))
+            if wnan[0].size > 0:
+                image[wnan]=0.0
 
             if boost is not None:
                 image = images.boost(image, boost)
