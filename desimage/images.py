@@ -1,4 +1,5 @@
 import numpy as np
+from numba import njit
 
 def get_color_image(imr, img, imb, **keys):
     """
@@ -79,6 +80,30 @@ def get_color_image(imr, img, imb, **keys):
     colorim[:,:,2] = B[:,:]
 
     return colorim
+
+
+@njit
+def interpolate_bad(im, mask):
+    """
+    go along columns until we hit a problem, then continue
+    the last value
+    """
+    nrows,ncols = im.shape
+
+    for col in range(ncols):
+        last_good=0
+        have_good=False
+        for row in range(nrows):
+            if mask[row,col] > 0:
+                # we hit a bad value
+                if have_good:
+                    # we have a good value to continue
+                    im[row,col] = last_good
+            else:
+                last_good = im[row,col]
+                have_good=True
+
+
 
 def bytescale(im):
     """ 

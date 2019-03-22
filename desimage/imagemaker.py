@@ -143,7 +143,8 @@ class RGBImageMaker(object):
         self.scales=scales
         self.absscale=absscale
 
-        self.satval=1.0e9
+        #self.satval=1.0e9
+        self.satval=None
         #self.satval=50
 
     def _make_imlist(self):
@@ -158,6 +159,21 @@ class RGBImageMaker(object):
                 boost=self.boost,
             )
             imlist.append(im)
+
+        mask=None
+        for i,im in enumerate(imlist):
+
+            if im.mask is not None:
+                if i==0:
+                    mask = im.mask.copy()
+                else:
+                    w=numpy.where(im.mask > 0)
+                    mask[w] = 1
+
+        if mask is not None:
+            for im in imlist:
+                images.interpolate_bad(im.image, mask)
+
 
         for i,im in enumerate(imlist):
             #im.scale_image()
@@ -184,9 +200,7 @@ class RGBImageMaker(object):
         print("using satval:",self.satval)
         print('getting color image')
         imlist=self.imlist
-        print('maxvals:')
-        for i,im in enumerate(imlist):
-            print(im.image.max()*scales[i])
+
 
         colorim=images.get_color_image(imlist[2].image,
                                        imlist[1].image,
@@ -294,6 +308,7 @@ class ImageTrans(object):
     def __init__(self, filename, boost=None, image_ext=1, ranges=None):
         import images
         self.ranges=ranges
+        self.mask=None
         with fitsio.FITS(filename) as fits:
             if ranges is not None:
                 rowslice, colslice = ranges
@@ -301,14 +316,22 @@ class ImageTrans(object):
                 print(colslice)
                 image=fits[image_ext][rowslice, colslice]
 
+                if 'msk' in fits:
+                    self.mask=fits['msk'][rowslice, colslice]
+
             else:
                 image=fits[image_ext].read()
+                if 'msk' in fits:
+                    self.mask=fits['msk'].read()
+
             wnan=where(isnan(image))
             if wnan[0].size > 0:
                 image[wnan]=0.0
 
             if boost is not None:
                 image = images.boost(image, boost)
+                if self.mask is not None:
+                    raise ValueError('cannot currently boost mask')
 
             header=fits[image_ext].read_header()
 
@@ -332,10 +355,14 @@ class ImageTrans(object):
     def flip_ud(self):
         print("    flipping",self.band)
         self.image = flipud(self.image)
+        if self.mask is not None:
+            self.mask = flipud(self.mask)
 
     def transpose(self):
         print("    transposing",self.band)
         self.image = self.image.transpose()
+        if self.mask is not None:
+            self.mask = self.mask.transpose()
 
     def rebin(self, rebin):
         import images
