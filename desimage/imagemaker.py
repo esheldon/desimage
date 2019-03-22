@@ -10,7 +10,7 @@ import sys
 import os
 import subprocess
 import shutil
-import numpy
+import numpy as np
 from numpy import array, zeros, flipud, where, sqrt, isnan
 import fitsio
 
@@ -167,7 +167,7 @@ class RGBImageMaker(object):
                 if i==0:
                     mask = im.mask.copy()
                 else:
-                    w=numpy.where(im.mask > 0)
+                    w=np.where(im.mask > 0)
                     mask[w] = 1
 
         if mask is not None:
@@ -208,12 +208,27 @@ class RGBImageMaker(object):
         imlist=self.imlist
 
 
-        colorim=images.get_color_image(imlist[2].image,
-                                       imlist[1].image,
-                                       imlist[0].image,
-                                       scales=scales,
-                                       nonlinear=NONLINEAR,
-                                       satval=self.satval)
+        if True:
+            nrows, ncols = imlist[0].image.shape
+            colorim=zeros( (nrows, ncols, 3), dtype='f4' )
+            images.get_color_image(
+                imlist[2].image,
+                imlist[1].image,
+                imlist[0].image,
+                NONLINEAR,
+                scales,
+                colorim,
+            )
+        else:
+            colorim = images.get_color_image_old(
+                imlist[2].image,
+                imlist[1].image,
+                imlist[0].image,
+                scales=scales,
+                nonlinear=NONLINEAR,
+                satval=self.satval,
+            )
+
 
         print('bytescaling')
         colorim = images.bytescale(colorim)
