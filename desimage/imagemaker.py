@@ -171,6 +171,12 @@ class RGBImageMaker(object):
                     mask[w] = 1
 
         if mask is not None:
+            images.propagate_missing_data(
+                imlist[0].image,
+                imlist[1].image,
+                imlist[2].image,
+                mask,
+            )
             for im in imlist:
                 images.interpolate_bad(im.image, mask)
 

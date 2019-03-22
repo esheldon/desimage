@@ -104,6 +104,29 @@ def interpolate_bad(im, mask):
                 have_good=True
 
 
+@njit
+def propagate_missing_data(im1, im2, im3, mask):
+    """
+    If the data are masked because of missing data, just set
+    all images to zero there to avoid odd colors.
+
+    Update the mask so we won't interpolate
+    """
+    nrows,ncols = im1.shape
+
+    for col in range(ncols):
+        for row in range(nrows):
+            if mask[row,col] > 0:
+                v1 = im1[row,col]
+                v2 = im2[row,col]
+                v3 = im3[row,col]
+
+                if v1==0.0 or v2==0.0 or v3==0.0:
+                    im1[row,col] = 0.0
+                    im2[row,col] = 0.0
+                    im3[row,col] = 0.0
+                    mask[row,col] = 0
+
 
 def bytescale(im):
     """ 
