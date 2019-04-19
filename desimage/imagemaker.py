@@ -20,7 +20,7 @@ from . import images
 NOMINAL_EXPTIME=900.0
 
 NONLINEAR=.12
-DEFAULT_CAMPAIGN='y3a1_coadd'
+DEFAULT_CAMPAIGN='y5a1_coadd'
 
 def make_image_auto(campaign,
                     tilename,
