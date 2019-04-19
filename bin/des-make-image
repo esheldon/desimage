@@ -5,10 +5,9 @@ import desimage
 
 parser=argparse.ArgumentParser()
 
-parser.add_argument('campaign',
-                    help='e.g. y3a1_coadd')
 parser.add_argument('tilename',
                     help='e.g. DES0428-4748')
+parser.add_argument('--campaign', help='e.g. y5a1_coadd')
 parser.add_argument('--types',
                     default='jpg',
                     help="types to make, e.g. jpg,tiff.  Default jpg")
@@ -27,8 +26,8 @@ if __name__=="__main__":
         clean=True
 
     desimage.make_image_auto(
-        args.campaign,
         args.tilename,
+        campaign=args.campaign,
         clean=clean,
         type=types,
     )

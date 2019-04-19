@@ -6,20 +6,19 @@ import desimage
 parser=argparse.ArgumentParser()
 
 parser.add_argument('system', help="batch system")
-parser.add_argument('campaign',
-                    help='e.g. y3a1_coadd')
-parser.add_argument('--types',
-                    default='jpg',
-                    help="types to make, e.g. jpg,tiff.  Default jpg")
+parser.add_argument('--campaign', help='e.g. y5a1_coadd')
+parser.add_argument('--types', help='types to make, e.g. jpg or jpg,tiff')
 
 if __name__=="__main__":
     args=parser.parse_args()
 
-    types = args.types.split(',')
+    types = args.types
+    if types is not None:
+        types = types.split(',')
 
     maker=desimage.batch.ScriptMaker(
         args.system,
-        args.campaign,
         types,
+        campaign=args.campaign,
     )
     maker.go()

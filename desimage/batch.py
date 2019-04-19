@@ -6,8 +6,16 @@ from . import imagemaker
 from . import files
 
 class ScriptMaker(object):
-    def __init__(self, system, campaign, types):
+    def __init__(self, system, types=None, campaign=None):
         self._system=system
+
+        if campaign is None:
+            campaign = imagemaker.DEFAULT_CAMPAIGN
+        if types is None:
+            types=['jpg']
+        elif not isinstance(types,(list,tuple)):
+            types = [types]
+
         self._campaign=campaign
         self._types=types
 
@@ -145,7 +153,7 @@ bash %(script_file)s \n"""
         text="""
 command: |
     . $HOME/.bashrc
-    source activate nsim
+    source activate y5color
 
     log_file=%(log_file)s
     rm -f $log_file
@@ -190,7 +198,7 @@ job_name: "%(job_name)s"
         typestring=','.join(self._types)
 
         text="""
-des-make-image --types=%(types)s %(campaign)s %(tilename)s
+des-make-image --types=%(types)s --campaign=%(campaign)s %(tilename)s
         \n"""
         text = text % dict(
             campaign=self._campaign,

@@ -1,10 +1,4 @@
 from __future__ import print_function
-try:
-    xrange
-    is3=False
-except:
-    xrange=range
-    is3=True
 
 import sys
 import os
@@ -22,8 +16,8 @@ NOMINAL_EXPTIME=900.0
 NONLINEAR=.12
 DEFAULT_CAMPAIGN='y5a1_coadd'
 
-def make_image_auto(campaign,
-                    tilename,
+def make_image_auto(tilename,
+                    campaign=None,
                     rebin=None,
                     clean=True,
                     ranges=None,
@@ -45,6 +39,9 @@ def make_image_auto(campaign,
         types=type
     else:
         types=[type]
+
+    if campaign is None:
+        campaign = DEFAULT_CAMPAIGN
 
     ifiles=FilesAuto(campaign, tilename, rebin=rebin)
     ifiles.sync()
@@ -68,7 +65,7 @@ def make_image_fromfiles(fname,
                          gfile,
                          rfile,
                          ifile,
-                         campaign=DEFAULT_CAMPAIGN,
+                         campaign=None,
                          tilename='None',
                          ranges=None,
                          boost=None,
@@ -98,6 +95,9 @@ def make_image_fromfiles(fname,
         types=type
     else:
         types=[type]
+
+    if campaign is None:
+        campaign = DEFAULT_CAMPAIGN
 
     ifiles=Files(
         gfile,
@@ -316,7 +316,7 @@ class RGBImageMaker(object):
         scales= SCALE*relative_scales
         print('scales:',scales)
 
-        for i in xrange(3):
+        for i in range(3):
             im=self.imlist[i]
             if im.exptime is not None:
                 print("    scaling",im.band,im.exptime)
@@ -434,10 +434,10 @@ class FlistCache(dict):
         if campaign not in FlistCache._flists:
             flist_file=files.get_flist_file(campaign)
             print("reading:",flist_file)
-            data=fitsio.read(flist_file)
+            data=fitsio.read(flist_file,lower=True)
 
             flist={}
-            for i in xrange(data.size):
+            for i in range(data.size):
                 key=_convert_bytes(data['key'][i].strip())
                 path=_convert_bytes(data['path'][i].strip())
                 flist[key] = path
@@ -477,6 +477,9 @@ class FilesAuto(Files):
 
     def __init__(self, campaign, tilename, rebin=None, clean=True):
         self._bands=['g','r','i']
+
+        self['campaign'] = campaign.upper()
+        self['tilename'] = tilename
 
         self._rebin=rebin
         self._clean=clean
@@ -565,7 +568,7 @@ class FilesAuto(Files):
             os.makedirs(odir)
 
         remote_url=self.get_remote_coadd_file('g')
-        remote_url = remote_url.replace('_g.fits','_[g,r,i].fits')
+        remote_url = remote_url.replace('_g','{_g,_r,_i}')
         cmd = r"""
     rsync                                   \
         -aP                                 \
@@ -609,7 +612,7 @@ class FilesAuto(Files):
         return d
 
 def _convert_bytes(data):
-    if is3:
+    try:
         return str(data, 'utf-8')
-    else:
+    except:
         return str(data)

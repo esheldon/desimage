@@ -10,9 +10,7 @@ parser.add_argument('gfile')
 parser.add_argument('rfile')
 parser.add_argument('ifile')
 
-parser.add_argument('--campaign',
-                    default='y5a1_coadd',
-                    help='e.g. y5a1_coadd')
+parser.add_argument('--campaign', help='e.g. y5a1_coadd')
 parser.add_argument('--scales',
                     help='relative scales.  over-ride campaign settings.  e.g. 1.0,1.2,2.0 ')
 parser.add_argument('--absscale',
