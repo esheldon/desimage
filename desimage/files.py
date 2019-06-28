@@ -42,15 +42,17 @@ def get_temp_dir(campaign, tilename):
     d = get_output_dir(campaign, tilename)
     return os.path.join(d, 'sources')
 
-def get_output_file(campaign, tilename, rebin=None, ext='.jpg'):
+def get_output_file(campaign, tilename, bands, rebin=None, ext='.jpg'):
     """
     location of a output file
     """
+
+    bstr = ''.join(bands)
     odir=get_output_dir(campaign, tilename)
 
     parts = [
         tilename,
-        'gri',
+        bstr,
     ]
 
     if rebin is not None:
@@ -61,13 +63,14 @@ def get_output_file(campaign, tilename, rebin=None, ext='.jpg'):
 
     return os.path.join(odir, fname)
 
-def get_log_file(campaign, tilename, rebin=None):
+def get_log_file(campaign, tilename, bands, rebin=None):
     """
     file holding log of processing
     """
     return get_output_file(
         campaign,
         tilename,
+        bands,
         rebin=rebin,
         ext='log',
     )
@@ -82,20 +85,24 @@ def get_script_dir(campaign):
     bdir=get_base_dir(campaign)
     return os.path.join(bdir, 'scripts')
 
-def get_script_file(campaign, tilename):
+def get_script_file(campaign, tilename, bands):
     """
     location for scripts
     """
+    bstr = ''.join(bands)
+
     dir=get_script_dir(campaign)
-    fname='%s.sh' % tilename
+    fname='%s-%s.sh' % (tilename, bstr)
     return os.path.join(dir, fname)
 
-def get_wq_file(campaign, tilename, missing=False):
+def get_wq_file(campaign, tilename, bands, missing=False):
     """
     location for scripts
     """
+    bstr = ''.join(bands)
+
     dir=get_script_dir(campaign)
-    parts=[tilename]
+    parts=[tilename, bstr]
     if missing:
         parts += ['missing']
 
@@ -107,8 +114,10 @@ def get_lsf_file(campaign, tilename, missing=False):
     """
     location for scripts
     """
+    bstr = ''.join(bands)
+
     dir=get_script_dir(campaign)
-    parts=[tilename]
+    parts=[tilename, bstr]
     if missing:
         parts += ['missing']
 

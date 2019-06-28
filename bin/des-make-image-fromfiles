@@ -10,6 +10,9 @@ parser.add_argument('gfile')
 parser.add_argument('rfile')
 parser.add_argument('ifile')
 
+parser.add_argument('--ufile')
+parser.add_argument('--zfile')
+
 parser.add_argument('--campaign', help='e.g. y5a1_coadd')
 parser.add_argument('--scales',
                     help='relative scales.  over-ride campaign settings.  e.g. 1.0,1.2,2.0 ')
@@ -54,6 +57,8 @@ if __name__=="__main__":
         args.gfile,
         args.rfile,
         args.ifile,
+        ufile=args.ufile,
+        zfile=args.zfile,
         campaign=args.campaign,
         tilename=args.tilename,
         image_ext=args.image_ext,

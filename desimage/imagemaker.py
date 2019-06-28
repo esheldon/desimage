@@ -14,13 +14,14 @@ from . import images
 NOMINAL_EXPTIME=900.0
 
 NONLINEAR=.12
-DEFAULT_CAMPAIGN='y5a1_coadd'
+DEFAULT_CAMPAIGN='y6a1_coadd'
 
 def make_image_auto(tilename,
                     campaign=None,
                     rebin=None,
                     clean=True,
                     ranges=None,
+                    bands=None,
                     type='jpg'):
     """
     make a color jpeg for the specified run
@@ -43,7 +44,7 @@ def make_image_auto(tilename,
     if campaign is None:
         campaign = DEFAULT_CAMPAIGN
 
-    ifiles=FilesAuto(campaign, tilename, rebin=rebin)
+    ifiles=FilesAuto(campaign, tilename, rebin=rebin, bands=bands)
     ifiles.sync()
 
     try:
@@ -65,6 +66,8 @@ def make_image_fromfiles(fname,
                          gfile,
                          rfile,
                          ifile,
+                         ufile=None,
+                         zfile=None,
                          campaign=None,
                          tilename='None',
                          ranges=None,
@@ -103,6 +106,8 @@ def make_image_fromfiles(fname,
         gfile,
         rfile,
         ifile,
+        ufile=ufile,
+        zfile=zfile,
         campaign=campaign,
         tilename=tilename,
     )
@@ -159,6 +164,27 @@ class RGBImageMaker(object):
                 boost=self.boost,
             )
             imlist.append(im)
+
+        if ifiles['ufile'] is not None:
+            print('adding:',ifiles['ufile'])
+            uim = ImageTrans(
+                ifiles['ufile'],
+                image_ext=self.image_ext,
+                ranges=self.ranges,
+                boost=self.boost,
+            )
+            imlist[0].add_image(uim)
+
+        if ifiles['zfile'] is not None:
+            print('adding:',ifiles['zfile'])
+            zim = ImageTrans(
+                ifiles['zfile'],
+                image_ext=self.image_ext,
+                ranges=self.ranges,
+                boost=self.boost,
+            )
+            imlist[2].add_image(zim)
+
 
         mask=None
         for i,im in enumerate(imlist):
@@ -292,7 +318,7 @@ class RGBImageMaker(object):
             relative_scales= array([1.0, 1.0, 1.5])
         else:
             nominal_exptime=NOMINAL_EXPTIME
-            if campaign=='Y5A1_COADD':
+            if campaign in ('Y5A1_COADD','Y6A1_COADD'):
                 #SCALE=.015*sqrt(2.0)
                 SCALE=.03
                 #relative_scales= array([1.00, 1.2, 2.0])
@@ -361,6 +387,11 @@ class ImageTrans(object):
 
         self.band=header.get('FILTER','None').split()[0]
         self.exptime=header.get('exptime',NOMINAL_EXPTIME)
+
+    def add_image(self, imt):
+        fac = self.exptime/imt.exptime
+        self.image += imt.image*fac
+        self.image *= 0.5
 
     def zero_bad_weightmap(self, minval=0.001):
         print("    zeroing bad weight map")
@@ -461,6 +492,8 @@ class Files(dict):
                  gfile,
                  rfile,
                  ifile,
+                 ufile=None,
+                 zfile=None,
                  campaign=DEFAULT_CAMPAIGN,
                  tilename='None'):
 
@@ -469,14 +502,26 @@ class Files(dict):
         self['gfile'] = gfile
         self['rfile'] = rfile
         self['ifile'] = ifile
+        self['ufile'] = ufile
+        self['zfile'] = zfile
+
+        if not hasattr(self, '_bands'):
+            self._bands = ['g', 'r', 'i']
+            if self['ufile'] is not None:
+                self._bands = ['u'] + self._bands
+            if self['zfile'] is not None:
+                self._bands = self._bands + ['z']
 
 class FilesAuto(Files):
     """
     deal with files, including syncing
     """
 
-    def __init__(self, campaign, tilename, rebin=None, clean=True):
-        self._bands=['g','r','i']
+    def __init__(self, campaign, tilename, rebin=None, clean=True, bands=None):
+        if bands is None:
+            self._bands=['g','r','i']
+        else:
+            self._bands = bands
 
         self['campaign'] = campaign.upper()
         self['tilename'] = tilename
@@ -490,7 +535,9 @@ class FilesAuto(Files):
             fd['gfile'],
             fd['rfile'],
             fd['ifile'],
-            campaign,
+            ufile=fd.get('ufile',None),
+            zfile=fd.get('zfile',None),
+            campaign=campaign,
             tilename=tilename,
         )
 
@@ -554,6 +601,7 @@ class FilesAuto(Files):
         return files.get_output_file(
             self['campaign'],
             self['tilename'],
+            self._bands,
             rebin=self._rebin,
             ext=image_type,
         )
@@ -568,7 +616,18 @@ class FilesAuto(Files):
             os.makedirs(odir)
 
         remote_url=self.get_remote_coadd_file('g')
-        remote_url = remote_url.replace('_g','{_g,_r,_i}')
+
+        p = '_g,_r,_i'
+
+        if self['ufile'] is not None:
+            p = '_u,' + p
+
+        if self['zfile'] is not None:
+            p = p + ',_z'
+
+        p = '{' + p + '}'
+
+        remote_url = remote_url.replace('_g',p)
         cmd = r"""
     rsync                                   \
         -aP                                 \

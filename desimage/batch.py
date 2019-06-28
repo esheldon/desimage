@@ -6,18 +6,23 @@ from . import imagemaker
 from . import files
 
 class ScriptMaker(object):
-    def __init__(self, system, types=None, campaign=None):
+    def __init__(self, system, types=None, bands=None, campaign=None):
         self._system=system
 
         if campaign is None:
             campaign = imagemaker.DEFAULT_CAMPAIGN
+
         if types is None:
             types=['jpg']
         elif not isinstance(types,(list,tuple)):
             types = [types]
 
+        if bands is None:
+            bands = ['g', 'r', 'i']
+
         self._campaign=campaign
         self._types=types
+        self._bands = bands
 
     def go(self):
         """
@@ -34,14 +39,19 @@ class ScriptMaker(object):
         for key in flist:
             tilename=key[0:-2]
             tilenames[tilename] = tilename
-            
+
         for tilename in tilenames:
+
+            # make sure all bands are present
+            if not self._bands_present(tilename, flist):
+                continue
 
             doprint=False
             for type in self._types:
                 image_file=files.get_output_file(
                     self._campaign,
                     tilename,
+                    self._bands,
                     ext=type,
                 )
                 if not os.path.exists(image_file):
@@ -53,6 +63,15 @@ class ScriptMaker(object):
                 self._write_batch(tilename)
             else:
                 self._clear_batch(tilename)
+
+    def _bands_present(self, tilename, flist):
+        for band in self._bands:
+            key = '%s-%s' % (tilename, band)
+            if key not in flist:
+                print('missing %s' % key)
+                return False
+
+        return True
 
     def _write_batch(self, tilename):
         """
@@ -106,6 +125,7 @@ class ScriptMaker(object):
         log_file=files.get_log_file(
             self._campaign,
             tilename,
+            self._bands,
         )
         job_name='%s-rgb' % tilename
 
@@ -129,7 +149,6 @@ bash %(script_file)s \n"""
         with open(lsf_file,'w') as fobj:
             fobj.write(text)
 
- 
     def _write_wq(self, tilename):
         """
         write the wq script
@@ -137,16 +156,19 @@ bash %(script_file)s \n"""
         wq_file=files.get_wq_file(
             self._campaign,
             tilename,
+            self._bands,
         )
         wqlog=wq_file+'.wqlog'
 
         script_file=files.get_script_file(
             self._campaign,
             tilename,
+            self._bands,
         )
         log_file=files.get_log_file(
             self._campaign,
             tilename,
+            self._bands,
         )
         job_name='%s-rgb' % tilename
 
@@ -190,20 +212,24 @@ job_name: "%(job_name)s"
         write the basic script
         """
 
+        bstr = ','.join(self._bands)
+
         script_file=files.get_script_file(
             self._campaign,
             tilename,
+            self._bands,
         )
 
         typestring=','.join(self._types)
 
         text="""
-des-make-image --types=%(types)s --campaign=%(campaign)s %(tilename)s
+des-make-image --types=%(types)s --campaign=%(campaign)s --bands=%(bands)s %(tilename)s
         \n"""
         text = text % dict(
             campaign=self._campaign,
             tilename=tilename,
             types=typestring,
+            bands=bstr,
         )
 
         print("writing:",script_file)
