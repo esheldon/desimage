@@ -100,6 +100,7 @@ class ScriptMaker(object):
         wq_file=files.get_wq_file(
             self._campaign,
             tilename,
+            self._bands,
         )
         wq_log=wq_file+'.wqlog'
 
