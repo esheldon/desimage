@@ -353,7 +353,6 @@ class RGBImageMaker(object):
 
 class ImageTrans(object):
     def __init__(self, filename, boost=None, image_ext=1, ranges=None):
-        import images
         self.ranges=ranges
         self.mask=None
         with fitsio.FITS(filename) as fits:
@@ -417,7 +416,6 @@ class ImageTrans(object):
             self.mask = self.mask.transpose()
 
     def rebin(self, rebin):
-        import images
         print("    rebinning",self.band)
         image=self.image
 
