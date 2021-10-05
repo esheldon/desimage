@@ -1,5 +1,5 @@
 import os
-from distutils.core import setup
+from setuptools import setup, find_packages
 
 scripts=[
     'des-make-image',
@@ -10,7 +10,7 @@ scripts=[os.path.join('bin',s) for s in scripts]
 
 setup(
     name="desimage", 
-    packages=['desimage'],
+    packages=find_packages(),
     scripts=scripts,
     version="0.9.0",
     description="Make color images from DES coadds",
