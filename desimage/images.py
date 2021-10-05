@@ -30,40 +30,39 @@ def get_color_image(imr, img, imb, nonlinear, scales, colorim):
         djs_rgb_make.  Even better, implement an outside function to do this.
     """
 
-    nrows,ncols = imr.shape
-
-    fac=1./nonlinear/3.
+    nrows, ncols = imr.shape
 
     for row in range(nrows):
         for col in range(ncols):
-            rval = imr[row,col] * scales[0]
-            gval = img[row,col] * scales[1]
-            bval = imb[row,col] * scales[2]
+            rval = imr[row, col] * scales[0]
+            gval = img[row, col] * scales[1]
+            bval = imb[row, col] * scales[2]
 
             if rval < 0.0:
-                rval=0.0
+                rval = 0.0
             if gval < 0.0:
-                gval=0.0
+                gval = 0.0
             if bval < 0.0:
-                bval=0.0
+                bval = 0.0
 
             # average images and divide by the nonlinear factor
-            meanval = (rval + gval + bval)/3.0
-            I = meanval/nonlinear
+            meanval = (rval + gval + bval) / 3.0
+            scaled_image = meanval / nonlinear  # noqa
 
-            if I <= 0.0:
-                I = 1.0/3.0
+            if scaled_image <= 0.0:
+                scaled_image = 1.0 / 3.0
 
-            f = np.arcsinh(I)/I
+            f = np.arcsinh(scaled_image) / scaled_image
 
-            if (rval*f > 1) or (gval*f > 1) or (bval*f > 1):
+            if (rval * f > 1) or (gval * f > 1) or (bval * f > 1):
                 maxval = max(rval, gval, bval)
-                if maxval > 0.0: 
-                    f = 1.0/maxval
+                if maxval > 0.0:
+                    f = 1.0 / maxval
 
-            colorim[row,col,0] = rval*f
-            colorim[row,col,1] = gval*f
-            colorim[row,col,2] = bval*f
+            colorim[row, col, 0] = rval * f
+            colorim[row, col, 1] = gval * f
+            colorim[row, col, 2] = bval * f
+
 
 @njit
 def interpolate_bad(im, mask):
@@ -71,20 +70,20 @@ def interpolate_bad(im, mask):
     go along columns until we hit a problem, then continue
     the last value
     """
-    nrows,ncols = im.shape
+    nrows, ncols = im.shape
 
     for col in range(ncols):
-        last_good=0
-        have_good=False
+        last_good = 0
+        have_good = False
         for row in range(nrows):
-            if mask[row,col] > 0:
+            if mask[row, col] > 0:
                 # we hit a bad value
                 if have_good:
                     # we have a good value to continue
-                    im[row,col] = last_good
+                    im[row, col] = last_good
             else:
-                last_good = im[row,col]
-                have_good=True
+                last_good = im[row, col]
+                have_good = True
 
 
 @njit
@@ -95,20 +94,20 @@ def propagate_missing_data(im1, im2, im3, mask):
 
     Update the mask so we won't interpolate
     """
-    nrows,ncols = im1.shape
+    nrows, ncols = im1.shape
 
     for col in range(ncols):
         for row in range(nrows):
-            if mask[row,col] > 0:
-                v1 = im1[row,col]
-                v2 = im2[row,col]
-                v3 = im3[row,col]
+            if mask[row, col] > 0:
+                v1 = im1[row, col]
+                v2 = im2[row, col]
+                v3 = im3[row, col]
 
-                if v1==0.0 or v2==0.0 or v3==0.0:
-                    im1[row,col] = 0.0
-                    im2[row,col] = 0.0
-                    im3[row,col] = 0.0
-                    mask[row,col] = 0
+                if v1 == 0.0 or v2 == 0.0 or v3 == 0.0:
+                    im1[row, col] = 0.0
+                    im2[row, col] = 0.0
+                    im3[row, col] = 0.0
+                    mask[row, col] = 0
 
 
 def bytescale(im):
@@ -117,41 +116,59 @@ def bytescale(im):
 
     output is [0,255] in a unsigned byte array
     """
-    imout = (im*255).astype('u1')
+    imout = (im * 255).astype("u1")
     return imout
 
-def boost( a, factor):
+
+def boost(a, factor):
     """
     Resize an array to larger shape, simply duplicating values.
     """
 
-    factor=int(factor)
+    factor = int(factor)
     if factor < 1:
         raise ValueError("boost factor must be >= 1")
 
-    newshape=np.array(a.shape)*factor
+    newshape = np.array(a.shape) * factor
 
-    slices = [ slice(0,old, float(old)/new) for old,new in zip(a.shape,newshape) ]
+    slices = [
+        slice(0, old, float(old) / new) for old, new in zip(a.shape, newshape)
+    ]
     coordinates = np.mgrid[slices]
-    indices = coordinates.astype('i')   #choose the biggest smaller integer index
+
+    # choose the biggest smaller integer index
+    indices = coordinates.astype("i")
     return a[tuple(indices)]
+
 
 def rebin(im, factor, dtype=None):
     """
     Rebin the image so there are fewer pixels.  The pixels are simply
     averaged.
     """
-    factor=int(factor)
+    factor = int(factor)
     s = im.shape
-    if ( (s[0] % factor) != 0
-            or (s[1] % factor) != 0):
-        raise ValueError("shape in each dim (%d,%d) must be "
-                   "divisible by factor (%d)" % (s[0],s[1],factor))
+    if (s[0] % factor) != 0 or (s[1] % factor) != 0:
+        raise ValueError(
+            "shape in each dim (%d,%d) must be "
+            "divisible by factor (%d)" % (s[0], s[1], factor)
+        )
 
-    newshape=np.array(s)/factor
+    newshape = np.array(s) / factor
     if dtype is None:
-        a=im
+        a = im
     else:
-        a=im.astype(dtype)
+        a = im.astype(dtype)
 
-    return a.reshape(newshape[0],factor,newshape[1],factor,).sum(1).sum(2)/factor/factor
+    return (
+        a.reshape(
+            newshape[0],
+            factor,
+            newshape[1],
+            factor,
+        )
+        .sum(1)
+        .sum(2)
+        / factor
+        / factor
+    )

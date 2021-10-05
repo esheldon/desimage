@@ -1,3 +1,7 @@
+# flake8: noqa
+
+__version__ = '0.9.1'
+
 from . import imagemaker
 from .imagemaker import (
     make_image_auto,
