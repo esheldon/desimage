@@ -615,32 +615,29 @@ class FilesAuto(Files):
         if not os.path.exists(odir):
             os.makedirs(odir)
 
-        remote_url=self.get_remote_coadd_file('g')
-
-        p = '_g,_r,_i'
-
+        bands = self._bands
         if self['ufile'] is not None:
-            p = '_u,' + p
+            bands = bands + ['u']
 
         if self['zfile'] is not None:
-            p = p + ',_z'
+            bands = bands + ['z']
 
-        p = '{' + p + '}'
+        for band in self._bands:
+            remote_url=self.get_remote_coadd_file(band)
 
-        remote_url = remote_url.replace('_g',p)
-        cmd = r"""
-    rsync                                   \
-        -aP                                 \
-        --password-file $DES_RSYNC_PASSFILE \
-        %(remote_url)s \
-        %(local_dir)s/
-        """ % dict(
-            remote_url=remote_url,
-            local_dir=odir,
-        )
+            cmd = r"""
+        rsync                                   \
+            -aP                                 \
+            --password-file $DES_RSYNC_PASSFILE \
+            %(remote_url)s \
+            %(local_dir)s/
+            """ % dict(
+                remote_url=remote_url,
+                local_dir=odir,
+            )
 
-        print(cmd)
-        subprocess.check_call(cmd,shell=True)
+            print(cmd)
+            subprocess.check_call(cmd,shell=True)
 
     def clean(self):
         """

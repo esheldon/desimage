@@ -42,7 +42,7 @@ def get_temp_dir(campaign, tilename):
     d = get_output_dir(campaign, tilename)
     return os.path.join(d, 'sources')
 
-def get_output_file(campaign, tilename, bands, rebin=None, ext='.jpg'):
+def get_output_file(campaign, tilename, bands, rebin=None, ext='jpg'):
     """
     location of a output file
     """

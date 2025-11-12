@@ -123,11 +123,7 @@ class ScriptMaker(object):
             self._campaign,
             tilename,
         )
-        log_file=files.get_log_file(
-            self._campaign,
-            tilename,
-            self._bands,
-        )
+
         job_name='%s-rgb' % tilename
 
         text="""#!/bin/bash
@@ -166,11 +162,7 @@ bash %(script_file)s \n"""
             tilename,
             self._bands,
         )
-        log_file=files.get_log_file(
-            self._campaign,
-            tilename,
-            self._bands,
-        )
+
         job_name='%s-rgb' % tilename
 
         text="""
@@ -178,25 +170,13 @@ command: |
     . $HOME/.bashrc
     source activate y5color
 
-    log_file=%(log_file)s
-    rm -f $log_file
-
-    log_dir=$(dirname $log_file)
-    log_base=$(basename $log_file)
-
-    mkdir -vp $log_dir
-
-    log_tmp="$TMPDIR/$log_base"
-    bash %(script_file)s &> $log_tmp
-
-    mv -vf $log_tmp $log_file
+    bash %(script_file)s
 
 mode: bynode
 job_name: "%(job_name)s"
         \n"""
 
         text = text % dict(
-            log_file=log_file,
             script_file=script_file,
             job_name=job_name,
         )
